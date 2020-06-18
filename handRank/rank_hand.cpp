@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <bits/stdc++.h>
 
 #define __STDC_LIMIT_MACROS
 
@@ -12,8 +13,8 @@
 
 #include "evalHandTables"
 
-#include "pybind11/pybind11.h"
-namespace py = pybind11;
+//#include "pybind11/pybind11.h"
+//namespace py = pybind11;
 
 
 #define MAX_BOARD_CARDS 5
@@ -215,8 +216,10 @@ std::string printHand(std::vector<int> cards) {
     return a.ToString();
 }
 
+/*
 PYBIND11_MODULE(handrank, m) {
     m.doc() = "Calculating Hand Rank"; // optional module docstring
     m.def("rankHand", &rankHand, "Calculate hand rank");
     m.def("printHand", &printHand, "Print hand");
 }
+*/
