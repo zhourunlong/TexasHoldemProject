@@ -12,26 +12,81 @@
 #include "game.h"
 #include "rng.h"
 #include "net.h"
+#include "./calcHandStrength/handStrength_utils.cpp"
+#include "./calcHandStrength/preflopTable.cpp"
 
-
-/* TODO: implement your own poker strategy in this function!
- * 
- * The function is called when it is the agent's turn to play!
- * All the information about the game and the current state is preprocessed
- * and stored in game and state.
- * 
- * */
 Action act(Game *game, MatchState *state, rng_state_t *rng) {
   Action action;
+    fprintf(stderr, "********** a new action **********\n");
 
-  // TODO: substitute this simple random strategy with your own strategy
+    // retrive private info
+    int playerId = state->viewingPlayer;
+    State privateState = state->state;
+    fprintf(stderr, "%dth hand, round %d out of %d\n", privateState.handId, privateState.round, game->numRounds);
 
-  double probs[ NUM_ACTION_TYPES ];
-  double actionProbs[ NUM_ACTION_TYPES ];
-  /* Define the probabilities of actions for the player */
-  probs[ a_fold ] = 0.06;
-  probs[ a_call ] = ( 1.0 - probs[ a_fold ] ) * 0.5;
-  probs[ a_raise ] = ( 1.0 - probs[ a_fold ] ) * 0.5;
+    char output[999];
+    printMatchState(game, state, 999, output);
+    fprintf(stderr, "%s\n", output);
+
+    std::vector<int> cards;
+    for (int i = 0; i < 2; ++i)
+        cards.push_back(privateState.holeCards[playerId][i]);
+    int curRound = privateState.round;
+    int publicCardNum;
+    switch (curRound) {
+        case 0: publicCardNum = 0;
+        case 1: publicCardNum = 3;
+        case 2: publicCardNum = 4;
+        case 3: publicCardNum = 5;
+    }
+    for (int i = 0; i < publicCardNum; ++i)
+        cards.push_back(privateState.boardCards[i]);
+
+    // pot odds
+    int pot = 0, bigBlind = 0, bet = privateState.minNoLimitRaiseTo - privateState.spent[playerId];
+    for (int i = 0; i < game->numPlayers; ++i) {
+        pot += privateState.spent[i];
+        bigBlind = std::max(bigBlind, game->blind[i]);
+    }
+    fprintf(stderr, "big blind = %d\n", bigBlind);
+
+    double PO = 1.0 * bet / (bet + pot);
+    fprintf(stderr, "PO = %d / (%d + %d) = %.10lf\n", bet, bet, pot, PO);
+
+    // hand strength
+    double HS;
+    if (curRound == 0)
+        HS = handStrength[cards[0]][cards[1]];
+    else
+        HS = HandStrength(cards);
+    fprintf(stderr, "HS = %.10lf\n", HS);
+
+    // rate of return
+    double RoR = HS / PO;
+    fprintf(stderr, "RoR = %.10lf\n", RoR);
+
+    // decision
+    double probs[NUM_ACTION_TYPES];
+    double actionProbs[NUM_ACTION_TYPES];
+
+    double pf = 0, pc = 1;
+    if (RoR < 0.8) {
+        pf = 0.95;
+        pc = 0;
+    } else if (RoR < 1) {
+        pf = 0.8;
+        pc = 0.05;
+    } else if (RoR < 1.3) {
+        pf = 0;
+        pc = 0.6;
+    } else {
+        pf = 0;
+        pc = 0.3;
+    }
+
+    probs[a_fold] = pf;
+    probs[a_call] = pc;
+    probs[a_raise] = 1 - pf - pc;
 
   /* build the set of valid actions */
   double p = 0.0;
@@ -59,12 +114,13 @@ Action act(Game *game, MatchState *state, rng_state_t *rng) {
   if( raiseIsValid( game, &(state->state), &min, &max ) ) {
     actionProbs[ a_raise ] = probs[ a_raise ];
     p += probs[ a_raise ];
+    fprintf(stderr, "able to raise, range = [%d, %d]\n", min, max);
   }
 
   /* normalise the probabilities  */
-  assert( p > 0.0 );
+    if (p == 0.0)
+        actionProbs[a_call] = p = 1;
   for( a = 0; a < NUM_ACTION_TYPES; ++a ) {
-
     actionProbs[ a ] /= p;
   }
 
@@ -84,6 +140,7 @@ Action act(Game *game, MatchState *state, rng_state_t *rng) {
     action.size = 0;
   }
 
+  fprintf(stderr, "\n");
   return action;
 }
 

@@ -17,8 +17,8 @@
 //namespace py = pybind11;
 
 
-#define MAX_BOARD_CARDS 5
-#define MAX_HOLE_CARDS 2
+#define MAX_BOARD_CARDS 7
+#define MAX_HOLE_CARDS 3
 #define MAX_SUITS 4
 #define MAX_RANKS 13
 
