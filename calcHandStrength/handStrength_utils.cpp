@@ -90,7 +90,7 @@ double MCHandStrength(std::vector<int> cards) {
     for (int i = 2; i < n; ++i)
         opponent.push_back(cards[i]);
 
-    int cnt = 0;
+    double cnt = 0;
     for (int round = 0; round < MC_Round; ++round) {
         for (int x = n; x < 7; ++x) {
             int y = rand() % 52;
@@ -108,8 +108,11 @@ double MCHandStrength(std::vector<int> cards) {
             used[y] = true;
         }
 
-        if (rankHand(my) > rankHand(opponent))
+        int rmy = rankHand(my), rop = rankHand(opponent);
+        if (rmy > rop)
             ++cnt;
+        if (rmy == rop)
+            cnt += 0.5;
 
         for (int x = n; x < 9; ++x) {
             used[*(opponent.rbegin())] = false;
@@ -118,7 +121,7 @@ double MCHandStrength(std::vector<int> cards) {
         for (int x = n; x < 7; ++x)
             my.pop_back();
     }
-    return 1.0 * cnt / MC_Round;
+    return cnt / MC_Round;
 }
 
 // input size: 5, 6, 7
@@ -137,7 +140,7 @@ double HandStrength(std::vector<int> cards) {
     for (int i = 2; i < n; ++i)
         opponent.push_back(cards[i]);
 
-    int cnt = 0, tot = 0;
+    long long cnt = 0, tot = 0;
     switch (n) {
         case 5:
             for (int y6 = used.successor(-1); y6 < 52; y6 = used.successor(y6)) {
@@ -158,8 +161,11 @@ double HandStrength(std::vector<int> cards) {
                         for (int y9 = used.successor(-1); y9 < 52; y9 = used.successor(y9)) {
                             opponent.push_back(y9);
 
-                            ++tot;
-                            if (rmy > rankHand(opponent))
+                            tot += 2;
+                            int rop = rankHand(opponent);
+                            if (rmy > rop)
+                                cnt += 2;
+                            if (rmy == rop)
                                 ++cnt;
 
                             opponent.pop_back();
@@ -192,8 +198,11 @@ double HandStrength(std::vector<int> cards) {
                     for (int y9 = used.successor(-1); y9 < 52; y9 = used.successor(y9)) {
                         opponent.push_back(y9);
 
-                        ++tot;
-                        if (rmy > rankHand(opponent))
+                        tot += 2;
+                        int rop = rankHand(opponent);
+                        if (rmy > rop)
+                            cnt += 2;
+                        if (rmy == rop)
                             ++cnt;
 
                         opponent.pop_back();
@@ -216,8 +225,11 @@ double HandStrength(std::vector<int> cards) {
                 for (int y9 = used.successor(-1); y9 < 52; y9 = used.successor(y9)) {
                     opponent.push_back(y9);
 
-                    ++tot;
-                    if (rmy > rankHand(opponent))
+                    tot += 2;
+                    int rop = rankHand(opponent);
+                    if (rmy > rop)
+                        cnt += 2;
+                    if (rmy == rop)
                         ++cnt;
 
                     opponent.pop_back();

@@ -11,10 +11,11 @@ std::vector<int> my, opponent;
 
 void dfs(int dep, int last) {
     if (dep == 7) {
-        ++tot;
-        if (!(tot % 10000000))
-            fprintf(stderr, "%lld\n", tot);
-        if (rmy > rankHand(opponent))
+        tot += 2;
+        int rop = rankHand(opponent);
+        if (rmy > rop)
+            cnt += 2;
+        if (rmy == rop)
             ++cnt;
         return;
     }
@@ -70,6 +71,7 @@ int main(int argc, char** argv) {
                     cnt = tot = 0;
                     dfs(0, -1);
                     printf("%d %d %.10lf\n", x, y, 1.0 * cnt / tot);
+                    fprintf(stderr, "%d %d %.10lf\n", x, y, 1.0 * cnt / tot);
                 }
 
                 used.free(y);
