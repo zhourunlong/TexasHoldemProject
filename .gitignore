@@ -3,6 +3,8 @@ dealer
 vzagent
 vzagent_fight
 vzagent_old
+allin
+call
 calcHandStrength/preflopTable_part*
 calcHandStrength/handStrength
 calcHandStrength/sumup

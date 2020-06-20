@@ -19,13 +19,13 @@
 const double foldToSafeCall = 0.8;
 
 // threshold of raise amount in each round
-const int raiseAmountThreshold[4] = {1200, 4000, 10000, 15000};
+const int raiseAmountThreshold[4] = {1000, 2000, 10000, 15000};
 
 // probability to give up a risky raise
 const double riskyRaise = 0.5;
 
 // threshold of call amount in each round
-const int callAmountThreshold[4] = {800, 3000, 7000, 12000};
+const int callAmountThreshold[4] = {500, 1000, 5000, 10000};
 
 // probability to give up a risky raise
 const double riskyCall = 0.3;
@@ -35,89 +35,15 @@ double HS, fHS, relativeRank;
 
 Action act(Game *game, MatchState *state, rng_state_t *rng) {
     Action action;
-    fprintf(stderr, "********** a new action **********\n");
 
-    // retrive private info
-    int playerId = state->viewingPlayer;
     State privateState = state->state;
-    int curRound = privateState.round;
-    fprintf(stderr, "%dth hand, round %d out of %d\n", privateState.handId, curRound, game->numRounds);
-    int spent = privateState.spent[playerId];
-    int remainMoney = game->stack[playerId] - spent;
-
-    if (privateState.handId != preHand) {
-        preHand = privateState.handId;
-        preRound = -1;
-        memset(totalAmount, 0, sizeof(totalAmount));
-    }
-
-    char output[999];
-    printMatchState(game, state, 999, output);
-    fprintf(stderr, "%s\n", output);
-
-    std::vector<int> cards;
-    for (int i = 0; i < 2; ++i)
-        cards.push_back(privateState.holeCards[playerId][i]);
-
-    int publicCardNum;
-    switch (curRound) {
-        case 0: publicCardNum = 0; break;
-        case 1: publicCardNum = 3; break;
-        case 2: publicCardNum = 4; break;
-        case 3: publicCardNum = 5; break;
-    }
-
-    for (int i = 0; i < publicCardNum; ++i)
-        cards.push_back(privateState.boardCards[i]);
-
-    // pot & big blind
-    int pot = 0, bigBlind = 0;
-    for (int i = 0; i < game->numPlayers; ++i) {
-        pot += privateState.spent[i];
-        bigBlind = std::max(bigBlind, game->blind[i]);
-    }
-    fprintf(stderr, "pot = %d\nbig blind = %d\n", pot, bigBlind);
-
-    int raiseMin, raiseMax;
-    bool canRaise = raiseIsValid(game, &privateState, &raiseMin, &raiseMax);
-
-    // amount to raise & call
-    int raiseAmount = raiseMin - spent;
-    int callAmount = privateState.maxSpent - spent;
-    fprintf(stderr, "min raise amount = %d\nmin call amount = %d\n", raiseAmount, callAmount);
-
-    // hand strength
-    if (curRound != preRound) {
-        preRound = curRound;
-        if (curRound == 0) {
-            fHS = HS = handStrength[cards[0]][cards[1]];
-            relativeRank = 0;
-        } else {
-            HS = HandStrength(cards, relativeRank);
-            //double bla;
-            //fHS = FactHandStrength(cards, bla);
-        }
-    }
-    fprintf(stderr, "expected hand strength = %.10lf, relative rank = %.10lf\n", HS, relativeRank);
-
-    // action decision
-    double pf = 0, pc = 1;
-    bool bluff = false;
-    if (HS < 0.5) {
-        pf = 1 - 4 * pow(HS, 2);
-        pc = 4 * (1 - HS / 40) * pow(HS, 2);
-        bluff = true;
-    } else {
-        pf = 0;
-        pc = 0.5 - 2 * pow(HS - 0.5, 2);
-    }
 
     // decision
     double probs[NUM_ACTION_TYPES];
     double actionProbs[NUM_ACTION_TYPES];
-    probs[a_fold] = pf;
-    probs[a_call] = pc;
-    probs[a_raise] = 1 - pf - pc;
+    probs[a_fold] = 0;
+    probs[a_call] = 0;
+    probs[a_raise] = 1;
 
     /* build the set of valid actions */
     double p = 0.0;
@@ -154,8 +80,6 @@ Action act(Game *game, MatchState *state, rng_state_t *rng) {
     for (a = 0; a < NUM_ACTION_TYPES; ++a)
         actionProbs[a] /= p;
 
-    fprintf(stderr, "decision: %.2lf fold, %.2lf call, %.2lf raise\n", actionProbs[a_fold], actionProbs[a_call], actionProbs[a_raise]);
-
     /* choose one of the valid actions at random */
     p = genrand_real2(rng);
     for (a = 0; a < NUM_ACTION_TYPES - 1; ++a) {
@@ -164,60 +88,13 @@ Action act(Game *game, MatchState *state, rng_state_t *rng) {
         p -= actionProbs[a];
     }
 
-    // safe to call
-    if (a == a_fold && callAmount == 0 && genrand_real2(rng) < foldToSafeCall)
-        a = a_call;
-
-    // risky to raise
-    if (a == a_raise) {
-        double raiseRatio = 1.0 * raiseAmount / spent;
-        int raiseThreshold = raiseAmountThreshold[curRound] * exp(HS - 1);
-        if ((raiseAmount + totalAmount[curRound] > raiseThreshold && HS < 0.8) || raiseRatio > 10) {
-            fprintf(stderr, "risky raise! ");
-            double prob1 = (1.0 * (raiseAmount + totalAmount[curRound]) / raiseThreshold - 1) / HS;
-            if ((curRound >= 1 && genrand_real2(rng) < std::max(riskyRaise, prob1))
-              || (curRound == 0 && HS < 0.65)) {
-                a = a_call;
-                fprintf(stderr, "-> call");
-            }
-            fprintf(stderr, "\n");
-        }
-    }
-
-    // risky to call
-    if (a == a_call) {
-        double callRatio = 1.0 * callAmount / spent;
-        int callThreshold = callAmountThreshold[curRound] * exp(HS - 1);
-        if ((callAmount + totalAmount[curRound] > callThreshold && HS < 0.8) || (callRatio > 8 && HS < 0.9)) {
-            fprintf(stderr, "risky call! ");
-            double prob2 = (1.0 * (callAmount + totalAmount[curRound]) / callThreshold - 1) / HS;
-            if (((curRound >= 1 && genrand_real2(rng) < std::max(riskyCall, prob2))
-              || (curRound == 0 && HS < 0.65))
-              && foldValid) {
-                a = a_fold;
-                fprintf(stderr, "-> fold");
-            }
-            fprintf(stderr, "\n");
-        }
-    }
-
     action.type = (enum ActionType)a;
     if (a == a_raise) {
-        if (bluff) { // all in!
-            action.size = (min + max) / 2;
-        } else {
-            int limit = std::max(0, raiseAmountThreshold[curRound] - totalAmount[curRound] - min);
-            limit = std::min(limit, max - min);
-            action.size = min + pow(HS, 10) * limit;
-            totalAmount[curRound] += action.size - spent;
-        }
+        action.size = max;
     } else {
         action.size = 0;
-        if (a == a_call)
-            totalAmount[curRound] += callAmount;
     }
 
-    fprintf(stderr, "----------  ----------  ----------\n\n");
     return action;
 }
 
