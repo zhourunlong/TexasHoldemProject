@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 #include "../handRank/rank_hand.cpp"
 
-const int MC_Round = 1000;
+const int MC_Round = 100000;
 
 // dancing links to optimize finding unused card
 // map from 0~n-1 to 1~n
@@ -127,7 +127,7 @@ double MCHandStrength(std::vector<int> cards) {
 // input size: 5, 6, 7
 // my: first two cards
 // public: 3rd ~ 7th cards
-double HandStrength(std::vector<int> cards) {
+double HandStrength(std::vector<int> cards, double &relativeRank) {
     int n = cards.size();
     assert(n == 5 || n == 6 || n == 7);
 
@@ -140,25 +140,28 @@ double HandStrength(std::vector<int> cards) {
     for (int i = 2; i < n; ++i)
         opponent.push_back(cards[i]);
 
+    relativeRank = 0;
     long long cnt = 0, tot = 0;
     switch (n) {
         case 5:
             for (int y6 = used.successor(-1); y6 < 52; y6 = used.successor(y6)) {
+                int by7 = used.successor(y6);
                 used.use(y6);
                 my.push_back(y6);
                 opponent.push_back(y6);
 
-                for (int y7 = used.successor(-1); y7 < 52; y7 = used.successor(y7)) {
+                for (int y7 = by7; y7 < 52; y7 = used.successor(y7)) {
                     used.use(y7);
                     my.push_back(y7);
                     opponent.push_back(y7);
                     int rmy = rankHand(my);
 
                     for (int y8 = used.successor(-1); y8 < 52; y8 = used.successor(y8)) {
+                        int by9 = used.successor(y8);
                         used.use(y8);
                         opponent.push_back(y8);
 
-                        for (int y9 = used.successor(-1); y9 < 52; y9 = used.successor(y9)) {
+                        for (int y9 = by9; y9 < 52; y9 = used.successor(y9)) {
                             opponent.push_back(y9);
 
                             tot += 2;
@@ -167,6 +170,7 @@ double HandStrength(std::vector<int> cards) {
                                 cnt += 2;
                             if (rmy == rop)
                                 ++cnt;
+                            relativeRank += rmy - rop;
 
                             opponent.pop_back();
                         }
@@ -184,6 +188,7 @@ double HandStrength(std::vector<int> cards) {
                 my.pop_back();
                 opponent.pop_back();
             }
+            break;
         case 6:
             for (int y7 = used.successor(-1); y7 < 52; y7 = used.successor(y7)) {
                 used.use(y7);
@@ -192,10 +197,11 @@ double HandStrength(std::vector<int> cards) {
                 int rmy = rankHand(my);
 
                 for (int y8 = used.successor(-1); y8 < 52; y8 = used.successor(y8)) {
+                    int by9 = used.successor(y8);
                     used.use(y8);
                     opponent.push_back(y8);
 
-                    for (int y9 = used.successor(-1); y9 < 52; y9 = used.successor(y9)) {
+                    for (int y9 = by9; y9 < 52; y9 = used.successor(y9)) {
                         opponent.push_back(y9);
 
                         tot += 2;
@@ -204,6 +210,7 @@ double HandStrength(std::vector<int> cards) {
                             cnt += 2;
                         if (rmy == rop)
                             ++cnt;
+                        relativeRank += rmy - rop;
 
                         opponent.pop_back();
                     }
@@ -216,13 +223,15 @@ double HandStrength(std::vector<int> cards) {
                 my.pop_back();
                 opponent.pop_back();
             }
+            break;
         case 7:
             int rmy = rankHand(my);
             for (int y8 = used.successor(-1); y8 < 52; y8 = used.successor(y8)) {
+                int by9 = used.successor(y8);
                 used.use(y8);
                 opponent.push_back(y8);
 
-                for (int y9 = used.successor(-1); y9 < 52; y9 = used.successor(y9)) {
+                for (int y9 = by9; y9 < 52; y9 = used.successor(y9)) {
                     opponent.push_back(y9);
 
                     tot += 2;
@@ -231,6 +240,7 @@ double HandStrength(std::vector<int> cards) {
                         cnt += 2;
                     if (rmy == rop)
                         ++cnt;
+                    relativeRank += rmy - rop;
 
                     opponent.pop_back();
                 }
@@ -238,6 +248,55 @@ double HandStrength(std::vector<int> cards) {
                 used.free(y8);
                 opponent.pop_back();
             }
+            break;
     }
+
+    relativeRank = 2 * relativeRank / tot;
+    return 1.0 * cnt / tot;
+}
+
+// input size: 5, 6, 7
+// my: first two cards
+// public: 3rd ~ 7th cards
+double FactHandStrength(std::vector<int> cards, double &relativeRank) {
+    int n = cards.size();
+    assert(n == 5 || n == 6 || n == 7);
+
+    UsedArray used(52);
+    for (int i = 0; i < n; ++i)
+        used.use(cards[i]);
+    std::vector<int> my, opponent;
+    for (int i = 0; i < n; ++i)
+        my.push_back(cards[i]);
+    for (int i = 2; i < n; ++i)
+        opponent.push_back(cards[i]);
+    int rmy = rankHand(my);
+
+    relativeRank = 0;
+    long long cnt = 0, tot = 0;
+    for (int y8 = used.successor(-1); y8 < 52; y8 = used.successor(y8)) {
+        int by9 = used.successor(y8);
+        used.use(y8);
+        opponent.push_back(y8);
+
+        for (int y9 = by9; y9 < 52; y9 = used.successor(y9)) {
+            opponent.push_back(y9);
+
+            tot += 2;
+            int rop = rankHand(opponent);
+            if (rmy > rop)
+                cnt += 2;
+            if (rmy == rop)
+                ++cnt;
+            relativeRank += rmy - rop;
+
+            opponent.pop_back();
+        }
+
+        used.free(y8);
+        opponent.pop_back();
+    }
+
+    relativeRank = 2 * relativeRank / tot;
     return 1.0 * cnt / tot;
 }

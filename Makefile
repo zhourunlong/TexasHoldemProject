@@ -1,7 +1,7 @@
 CXX = g++
 OPT = -O2 -std=c++14
 
-PROGRAMS = dealer vzagent
+PROGRAMS = dealer vzagent vzagent_fight
 
 all: $(PROGRAMS)
 

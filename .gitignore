@@ -1,6 +1,9 @@
-logs/
+logs/*
 dealer
 vzagent
-preflopTable_part*
-handStrength
-sumup
+vzagent_fight
+vzagent_old
+calcHandStrength/preflopTable_part*
+calcHandStrength/handStrength
+calcHandStrength/sumup
+calcHandStrength/test
