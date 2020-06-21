@@ -109,7 +109,7 @@ Action act(Game *game, MatchState *state, rng_state_t *rng) {
         bluff = true;
     } else {
         pf = 0;
-        pc = 0.5 - 2 * pow(HS - 0.5, 2);
+        pc = 0.9 - 3.6 * pow(HS - 0.5, 2);
     }
 
     // decision
@@ -176,7 +176,7 @@ Action act(Game *game, MatchState *state, rng_state_t *rng) {
             fprintf(stderr, "risky raise! ");
             double prob1 = (1.0 * (raiseAmount + totalAmount[curRound]) / raiseThreshold - 1) / HS;
             if ((curRound >= 1 && genrand_real2(rng) < std::max(riskyRaise, prob1))
-              || (curRound == 0 && HS < 0.65)) {
+              || (curRound == 0 && HS < 0.7)) {
                 a = a_call;
                 fprintf(stderr, "-> call");
             }
@@ -188,11 +188,11 @@ Action act(Game *game, MatchState *state, rng_state_t *rng) {
     if (a == a_call) {
         double callRatio = 1.0 * callAmount / spent;
         int callThreshold = callAmountThreshold[curRound] * exp(HS - 1);
-        if ((callAmount + totalAmount[curRound] > callThreshold && HS < 0.8) || (callRatio > 8 && HS < 0.9)) {
+        if ((callAmount + totalAmount[curRound] > callThreshold && HS < 0.8) || callRatio > 8) {
             fprintf(stderr, "risky call! ");
             double prob2 = (1.0 * (callAmount + totalAmount[curRound]) / callThreshold - 1) / HS;
             if (((curRound >= 1 && genrand_real2(rng) < std::max(riskyCall, prob2))
-              || (curRound == 0 && HS < 0.65))
+              || (curRound == 0 && HS < 0.7))
               && foldValid) {
                 a = a_fold;
                 fprintf(stderr, "-> fold");
